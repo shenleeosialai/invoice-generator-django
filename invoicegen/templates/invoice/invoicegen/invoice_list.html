@@ -1,0 +1,47 @@
+{% extends "invoice/base.html" %}
+{% block title %}Invoices{% endblock %}
+
+{% block content %}
+<div class="invoice-wrapper">
+  <h2>Invoices</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice</th>
+        <th>Title</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for invoice in invoices %}
+      <tr>
+        <td>{{ invoice.invoice_number }}</td>
+        <td>{{ invoice.title }}</td>
+        <td>Ksh {{ invoice.amount }}</td>
+        <td>
+          {% if invoice.paid %}
+            <span class="badge paid">PAID</span>
+          {% else %}
+            <span class="badge unpaid">UNPAID</span>
+          {% endif %}
+        </td>
+        <td>{{ invoice.created_at|date:"d M Y" }}</td>
+        <td>
+          <a href="{% url 'invoicegen:invoice_detail' invoice.pk %}">
+            View
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6">No invoices yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

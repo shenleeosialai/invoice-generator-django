@@ -1,0 +1,171 @@
+{% extends "invoice/base.html" %} 
+{% load static %}
+{% block title %}Invoice {{invoice.invoice_number }}{% endblock %} {% block content %}
+<div class="invoice-wrapper" id="invoice">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="company">
+      <h1>OSHEN KE</h1>
+      <p>53B Avenue House</p>
+      <p>Kenyatta Avenue</p>
+      <p>Nairobi, Kenya</p>
+    </div>
+    <div>
+      <img src="{% static 'css/images/2.png' %}"
+          alt="Company Logo"
+          class="company-logo">
+    </div>
+    <div class="invoice-info">
+      <h2>INVOICE</h2>
+      <p>
+        Invoice #: <span id="invoiceNumber">{{ invoice.invoice_number }}</span>
+      </p>
+      <p>Date: {{ invoice.created_at|date:"d M Y" }}</p>
+
+      {% if invoice.paid %}
+      <div id="statusBadge" class="badge paid">PAID</div>
+      {% else %}
+      <div id="statusBadge" class="badge unpaid">UNPAID</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="top-info">
+    <div class="bill-to">
+      <div class="section-title">BILL TO</div>
+      {% if invoice.client_name %}
+        <p>{{ invoice.client_name }}</p>
+        {% endif %} 
+        {% if invoice.client_address %}
+        <p>{{ invoice.client_address|linebreaksbr }}</p>
+        {% endif %}
+        {% if invoice.client_city or invoice.client_country %}
+        <p>
+          {{ invoice.client_city }} {% if invoice.client_city and invoice.client_country %}, 
+          {% endif %} 
+          {{ invoice.client_country }}
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="invoice-summary">
+      <div class="balance">
+        Balance Due<br />
+        <strong>Ksh <span id="balanceDue">{{ invoice.amount }}</span></strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITEMS (JS driven for now) -->
+  <div class="section">
+    <table id="items">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Amount</th>
+          <th class="no-print">Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button class="secondary no-print" onclick="addRow()">+ Add Item</button>
+  </div>
+
+  <div class="totals">
+    <div>
+      <strong>Total</strong>
+      <strong>Ksh <span id="total">{{ invoice.amount }}</span></strong>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="footer">
+    <div class="section-title">Notes</div>
+    <p contenteditable class="editable">Thank you for your business.</p>
+
+    <div class="section-title">Terms & Conditions</div>
+    <p contenteditable class="editable">Payment is due within 15 days.</p>
+  </div>
+</div>
+
+<div class="no-print" style="max-width: 900px; margin: auto">
+  <button onclick="downloadPDF()">Download PDF</button>
+</div>
+
+<script>
+  const tbody = document.querySelector("#items tbody");
+const statusBadge = document.getElementById("statusBadge");
+
+function addRow() {
+  const row = document.createElement("tr");
+  row.innerHTML = `
+    <td>${tbody.children.length + 1}</td>
+    <td><input placeholder="Service description"></td>
+    <td><input type="number" value="1" oninput="calculate()"></td>
+    <td><input type="number" value="0" oninput="calculate()"></td>
+    <td>Ksh <span class="amount">0.00</span></td>
+    <td class="actions no-print"><button onclick="removeRow(this)">✕</button></td>
+  `;
+  tbody.appendChild(row);
+  calculate();
+}
+
+function removeRow(btn) {
+  btn.closest("tr").remove();
+  calculate();
+}
+
+function calculate() {
+  let total = 0;
+
+  document.querySelectorAll("#items tbody tr").forEach(row => {
+    const qty = row.children[2].querySelector("input").value || 0;
+    const rate = row.children[3].querySelector("input").value || 0;
+    const amount = qty * rate;
+
+    row.querySelector(".amount").textContent = amount.toFixed(2);
+    total += amount;
+  });
+
+  document.getElementById("total").textContent = total.toFixed(2);
+  document.getElementById("balanceDue").textContent = total.toFixed(2);
+}
+
+// Toggle Paid / Unpaid
+function toggleStatus() {
+  if(statusBadge.classList.contains("unpaid")){
+    statusBadge.classList.remove("unpaid");
+    statusBadge.classList.add("paid");
+    statusBadge.textContent = "PAID";
+  } else {
+    statusBadge.classList.remove("paid");
+    statusBadge.classList.add("unpaid");
+    statusBadge.textContent = "UNPAID";
+  }
+}
+
+async function downloadPDF() {
+  document.querySelectorAll(".no-print").forEach(el => el.style.display = "none");
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p", "pt", "a4");
+
+  const canvas = await html2canvas(document.getElementById("invoice"), { scale: 2 });
+  const img = canvas.toDataURL("image/png");
+
+  pdf.addImage(img, "PNG", 20, 20, 555, 0);
+
+  const inv = document.getElementById("invoiceNumber").textContent.trim();
+  pdf.save(`INV-${inv}.pdf`);
+
+  document.querySelectorAll(".no-print").forEach(el => el.style.display = "");
+}
+
+addRow();
+</script>
+{% endblock %}
